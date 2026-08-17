@@ -1,0 +1,186 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ */
+
+package Main;
+
+import AnalizadorLexico.Lexer;
+import Registros.RegistroError;
+import Registros.RegistroToken;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.Scanner;
+
+/**
+ *
+ * @author dar333n
+ */
+public class Main {
+    
+    public static Scanner sc = new Scanner(System.in, StandardCharsets.UTF_8);
+    public static List<RegistroToken> tokens;
+    public static List<RegistroError> errores;
+    
+
+    public static void main(String[] args) {
+
+        System.out.println("=====================================");
+        System.out.println("  PromptZal - Analizador Lexico");
+        System.out.println("=====================================");
+
+        boolean continuar = true;
+
+        while (continuar) {
+
+            String rutaArchivoPz = pedirRutaArchivoValida();
+
+            String rutaCarpetaHtml = pedirRutaCarpetaValida();
+
+            procesarArchivo(rutaArchivoPz, rutaCarpetaHtml);
+
+            continuar = preguntarQueHacer(sc);
+        }
+
+        System.out.println("Programa finalizado.");
+        sc.close();
+    }
+
+    public static String pedirRutaArchivoValida() {
+        while (true) {
+            System.out.println();
+            System.out.print("Ingrese la ruta del archivo .pz: ");
+            String ruta = sc.nextLine().trim();
+
+            File archivo = new File(ruta);
+            if (archivo.exists() && archivo.isFile()) {
+                return ruta;
+            } else {
+                System.out.println("ERROR: El archivo especificado no existe o la ruta es invalida. Intente de nuevo.");
+            }
+        }
+    }
+
+    public static String pedirRutaCarpetaValida() {
+        while (true) {
+            System.out.print("Ingrese la ruta de la carpeta para guardar los reportes HTML: ");
+            String rutaCarpeta = sc.nextLine().trim();
+
+            if (rutaCarpeta.isEmpty()) {
+                System.out.println("ERROR: La ruta no puede estar vacia. Intente de nuevo.");
+                continue;
+            }
+
+            File carpeta = new File(rutaCarpeta);
+
+            if (carpeta.isDirectory()) {
+                return rutaCarpeta;
+            } else {
+                System.out.println("ERROR: La ruta existe pero no es una carpeta valida.");
+            }
+        }
+    }
+
+    public static boolean preguntarQueHacer(Scanner sc) {
+        boolean opcionValida=false;  
+        while(!opcionValida){
+            mostrarOpciones();
+            String opcion = sc.nextLine().trim();
+            switch (opcion) {
+                case "1":
+                    return true;
+                case "2":
+                    return false;
+                default:
+                    System.out.println("Opcion invalida, elija una de las opciones que se muestran en pantalla.");
+                    opcionValida=false;
+            }
+        }
+        return false;
+    }
+
+    public static void mostrarOpciones(){
+        System.out.println("=====================================");
+        System.out.println("  PromptZal - Analizador Lexico");
+        System.out.println("=====================================");
+        System.out.println(" ");
+        System.out.print("1. Analizar otro archivo\n");
+        System.out.print("2. Salir\n");
+        System.out.print("Seleccione una opcion: ");
+    }
+
+    
+    public static void procesarArchivo(String rutaPz, String carpetaHtml) {
+        File archivo = new File(rutaPz);
+
+        if (!archivo.exists()) {
+            System.out.println("ERROR: el archivo no existe.");
+            return;
+        }
+
+        String codigoFuente;
+        try {
+            codigoFuente = new String(Files.readAllBytes(archivo.toPath()), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            System.out.println("ERROR al leer el archivo: " + e.getMessage());
+            return;
+        }
+
+        Lexer lexer = new Lexer(codigoFuente);
+        lexer.analizar();
+
+        tokens = lexer.getTokens();
+        errores = lexer.getErrores();
+
+        imprimirTablaTokens(tokens);
+        imprimirTablaErrores(errores);
+        
+        //HTML
+        
+    }
+
+
+    public static void imprimirTablaTokens(List<RegistroToken> tokens) {
+        System.out.println();
+        System.out.println("-------------------------------------------- TOKENS RECONOCIDOS ----------------------------------------------");
+        System.out.printf("%-20s %-50s %-20s %-15s %-15s%n", "No.", "Lexema", "Tipo", "Fila", "Col");
+        System.out.println("--------------------------------------------------------------------------------------------------------------");
+        
+        for (int i = 0; i < tokens.size(); i++) {
+            RegistroToken t = tokens.get(i);
+            int numero = i + 1;
+            System.out.printf("%-20d %-50s %-20s %-15d %-15d%n",
+                    numero, t.getLexema(), t.getTipo(), t.getFila(), t.getColumna());
+        }
+
+        System.out.println("Total de tokens: " + tokens.size());
+    }
+
+
+    public static void imprimirTablaErrores(List<RegistroError> errores) {
+        System.out.println();
+        System.out.println("-------------------------------------------- ERRORES LEXICOS --------------------------------------------------");
+
+        if (errores.isEmpty()) {
+            System.out.println("No se encontraron errores lexicos.");
+            return;
+        }
+
+        System.out.printf("%-50s %-100s %-10s %-6s%n", "Lexema/Caracter", "Descripcion", "Fila", "Col");
+        System.out.println("---------------------------------------------------------------------------------------------------------------");
+
+        for (RegistroError e : errores) {
+            System.out.printf("%-20s %-100s %-10d %-6d%n",
+                    e.getLexema(), e.getDescripcion(), e.getFila(), e.getColumna());
+        }
+
+        System.out.println("Total de errores: " + errores.size());
+    }
+    
+}
+    
+
+
+

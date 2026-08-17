@@ -8,12 +8,9 @@ package PromptZalLenguaje;
  *
  * @author dar333n
  */
-public class TipoToken {
-
-    public enum tipoToken {
+public enum TipoToken{
         DIRECTIVA, PALABRA_RESERVADA, COMANDO_IA, CONECTOR, IDENTIFICADOR,
         CADENA, ENTERO, DECIMAL, OP_ASIGNACION, OP_CONCATENACION,
         LLAVE_ABRE, LLAVE_CIERRA, PARENTESIS_ABRE, PARENTESIS_CIERRA,
         COMA, FUNCION
-    }
 }

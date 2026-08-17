@@ -11,22 +11,17 @@ import PromptZalLenguaje.TipoToken;
  * @author dar333n
  */
 public class RegistroToken {
-    private int numero;
+
     private String lexema;
     private TipoToken tipo;
     private int fila;
     private int columna;
 
-    public RegistroToken(int numero, String lexema, TipoToken tipo, int fila, int columna) {
-        this.numero = numero;
+    public RegistroToken(String lexema, TipoToken tipo, int fila, int columna) {
         this.lexema = lexema;
         this.tipo = tipo;
         this.fila = fila;
         this.columna = columna;
-    }
-
-    public int getNumero() {
-        return numero;
     }
 
     public String getLexema() {
