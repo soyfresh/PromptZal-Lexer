@@ -8,7 +8,9 @@ import AnalizadorLexico.Lexer;
 import Registros.RegistroError;
 import Registros.RegistroToken;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
@@ -137,10 +139,83 @@ public class Main {
         imprimirTablaTokens(tokens);
         imprimirTablaErrores(errores);
         
-        //HTML
-        
+        generarReporteHTML(tokens, errores, carpetaHtml);
     }
 
+    public static void generarReporteHTML(List<RegistroToken> tokens, List<RegistroError> errores, String carpetaDestino) {
+        File carpeta = new File(carpetaDestino);
+        if (!carpeta.exists()) {
+            System.out.println("la crpeta no existe, no se pudo generar el archivo HTML");
+        }
+
+        File archivoHtml = new File(carpeta, "reporte_analisis.html");
+
+        try (PrintWriter pw = new PrintWriter(new FileWriter(archivoHtml, StandardCharsets.UTF_8))) {
+            pw.println("<!DOCTYPE html>");
+            pw.println("<html lang=\"es\">");
+            pw.println("<head>");
+            pw.println("    <meta charset=\"UTF-8\">");
+            pw.println("    <title>Reportes - PromptZal</title>");
+            pw.println("    <style>");
+            pw.println("        body { font-family: Arial, sans-serif; margin: 30px; }");
+            pw.println("        h1, h2 { color: #333; }");
+            pw.println("        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }");
+            pw.println("        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }");
+            pw.println("        th { background-color: #f2f2f2; }");
+            pw.println("    </style>");
+            pw.println("</head>");
+            pw.println("<body>");
+
+            pw.println("    <h1>Reportes</h1>");
+
+            //TOKENS RECONOCIDOS
+            pw.println("    <h2>Tokens Reconocidos</h2>");
+            pw.println("    <table>");
+            pw.println("        <tr><th>No.</th><th>Lexema</th><th>Tipo</th><th>Fila</th><th>Columna</th></tr>");
+
+            for (int i = 0; i < tokens.size(); i++) {
+                RegistroToken t = tokens.get(i);
+                pw.println("        <tr>");
+                pw.println("            <td>" + (i + 1) + "</td>");
+                pw.println("            <td>" + t.getLexema() + "</td>");
+                pw.println("            <td>" + t.getTipo() + "</td>");
+                pw.println("            <td>" + t.getFila() + "</td>");
+                pw.println("            <td>" + t.getColumna() + "</td>");
+                pw.println("        </tr>");
+            }
+            pw.println("    </table>");
+
+            //ERRORES LÉXICOS
+            pw.println("    <h2>Errores Léxicos</h2>");
+
+            if (errores.isEmpty()) {
+                pw.println("    <p>No se encontraron errores lexicos.</p>");
+            } else {
+                pw.println("    <table>");
+                pw.println("        <tr><th>No.</th><th>Lexema / Carácter</th><th>Descripción</th><th>Fila</th><th>Columna</th></tr>");
+
+                for (int i = 0; i < errores.size(); i++) {
+                    RegistroError e = errores.get(i);
+                    pw.println("        <tr>");
+                    pw.println("            <td>" + (i + 1) + "</td>");
+                    pw.println("            <td>" + e.getLexema() + "</td>");
+                    pw.println("            <td>" + e.getDescripcion() + "</td>");
+                    pw.println("            <td>" + e.getFila() + "</td>");
+                    pw.println("            <td>" + e.getColumna() + "</td>");
+                    pw.println("        </tr>");
+                }
+                pw.println("    </table>");
+            }
+
+            pw.println("</body>");
+            pw.println("</html>");
+
+            System.out.println("\nReporte HTML generado exitosamente en: " + archivoHtml.getAbsolutePath());
+
+        } catch (IOException e) {
+            System.out.println("ERROR al generar el reporte HTML: " + e.getMessage());
+        }
+    }
 
     public static void imprimirTablaTokens(List<RegistroToken> tokens) {
         System.out.println();
