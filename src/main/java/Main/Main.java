@@ -131,7 +131,6 @@ public class Main {
         }
 
         Lexer lexer = new Lexer(codigoFuente);
-        lexer.analizar();
 
         tokens = lexer.getTokens();
         errores = lexer.getErrores();

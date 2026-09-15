@@ -8,15 +8,53 @@ import PromptZalLenguaje.TipoToken;
 import Registros.RegistroError;
 import Registros.RegistroToken;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
  * @author dar333n
  */
 public class Lexer {
+
+    private static final Map<String, TipoToken> PALABRAS_RESERVADAS = new HashMap<>();
+    private static final Map<String, TipoToken> COMANDOS = new HashMap<>();
+    private static final Map<String, TipoToken> FUNCIONES_SISTEMA = new HashMap<>();
+    private static final Map<String, TipoToken> CONECTORES = new HashMap<>();
+    private static final Map<String, TipoToken> TODAS_LAS_PALABRAS = new HashMap<>();
+
+    static {
+        PALABRAS_RESERVADAS.put("AGENTE", TipoToken.PALABRA_RESERVADA);
+        PALABRAS_RESERVADAS.put("contexto", TipoToken.PALABRA_RESERVADA);
+        PALABRAS_RESERVADAS.put("variable", TipoToken.PALABRA_RESERVADA);
+        PALABRAS_RESERVADAS.put("EJECUTAR", TipoToken.PALABRA_RESERVADA);
+        PALABRAS_RESERVADAS.put("EXPORTAR", TipoToken.PALABRA_RESERVADA);
+
+        COMANDOS.put("PREGUNTAR", TipoToken.COMANDO);
+        COMANDOS.put("GENERAR", TipoToken.COMANDO);
+        COMANDOS.put("RESUMIR", TipoToken.COMANDO);
+        COMANDOS.put("ANALIZAR", TipoToken.COMANDO);
+        COMANDOS.put("TRADUCIR", TipoToken.COMANDO);
+        COMANDOS.put("CLASIFICAR", TipoToken.COMANDO);
+        COMANDOS.put("EXTRAER", TipoToken.COMANDO);
+
+        FUNCIONES_SISTEMA.put("CARGAR", TipoToken.FUNCION_SISTEMA);
+
+        CONECTORES.put("SOBRE", TipoToken.CONECTOR);
+        CONECTORES.put("DESDE", TipoToken.CONECTOR);
+        CONECTORES.put("EN", TipoToken.CONECTOR);
+        CONECTORES.put("COMO", TipoToken.CONECTOR);
+
+        TODAS_LAS_PALABRAS.putAll(PALABRAS_RESERVADAS);
+        TODAS_LAS_PALABRAS.putAll(COMANDOS);
+        TODAS_LAS_PALABRAS.putAll(FUNCIONES_SISTEMA);
+        TODAS_LAS_PALABRAS.putAll(CONECTORES);
+    }
     
-    private char[] texto;
+    private static final String DIRECTIVAS_VALIDAS = "modelo,rol,formato,";
+    
+    private String flujoCaracteres;
     private int posicion;
     private int fila;
     private int columna;
@@ -25,7 +63,7 @@ public class Lexer {
     private List<RegistroError> errores;
     
     public Lexer(String codigoFuente) {
-        this.texto = codigoFuente.toCharArray();
+        this.flujoCaracteres = codigoFuente;
         this.posicion = 0;
         this.fila = 1;
         this.columna = 1;
@@ -40,330 +78,291 @@ public class Lexer {
     public List<RegistroError> getErrores() {
         return errores;
     }
+    
+    
+    
     /*
-    Metodo que se llama para analizar todo el texto
+    **
+    METODOS DEL CURSOR
+    **
     */
-    public void analizar() {
-        while (!finDeArchivo()) {
-            leerToken();
-        }
+    private boolean finDeArchivo() {
+        return posicion >= flujoCaracteres.length();
+    }
+
+    private char actual() {
+        return flujoCaracteres.charAt(posicion);
     }
     
-    //revisa si el archivo aun no termina
-    private boolean finDeArchivo() {
-    return posicion >= texto.length;
-    }
-
-    //caracter de la posicion actual del texto .pz
-    private char actual() {
-        return texto[posicion];
-    }
-
-    //ver el siguiente caracter
-    private char siguiente() {
-        if (posicion + 1 >= texto.length) {
-            return '\0';
-        }
-        return texto[posicion + 1];
-    }
-
-    //avanzar a la siguiente columna
     private char avanzar() {
-        char c = texto[posicion];
-        posicion = posicion + 1;
-
-        if (c == '\n') {//si es un salto de linea, salta a siguiente fila y reinicia columna
-            fila = fila + 1;
+        char c = flujoCaracteres.charAt(posicion);
+        posicion++;
+        if (c == '\n') {
+            fila++;
             columna = 1;
         } else {
-            columna = columna + 1;
+            columna++;
         }
-
         return c;
     }
-    
-    
-    /*
-    metodos para saber se es una letra o numero
-    */
-    private boolean esDigito(char c) {
-        return c >= '0' && c <= '9';
+
+    private char siguiente() {
+        return (posicion + 1 < flujoCaracteres.length()) ? flujoCaracteres.charAt(posicion + 1) : '\0';
     }
-    
-    private boolean esLetra(char c) {
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-    }
-    
-    
-    /*
-    metodos para reconocer identificadores
-    */
+
     private boolean esInicioIdentificador(char c) {
-        return esLetra(c) || c == '_';
+        return Character.isLetter(c) || c == '_';
     }
 
     private boolean esParteIdentificador(char c) {
-        return esLetra(c) || esDigito(c) || c == '_';
+        return Character.isLetterOrDigit(c) || c == '_';
     }
     
     
-    //define el tipo de token que es
-    private void leerToken() {
-        char c = actual();
-
-        if (c == ' ' || c == '\t') {
-            avanzar();
-            return;
-        }
-
-        if (c == '\n') {
-            avanzar();
-            return;
-        }
-
-        if (c == '/' && siguiente() == '/') {
-            leerComentarioDeLinea();
-            return;
-        }
-
-        if (c == '/' && siguiente() == '*') {
-            leerComentarioDeBloque();
-            return;
-        }
-
-        if (c == '@') {
-            leerDirectiva();
-            return;
-        }
-
-        if (c == '"') {
-            leerCadena();
-            return;
-        }
-
-        if (esDigito(c)) {
-            leerNumero();
-            return;
-        }
-
-        if (esInicioIdentificador(c)) {
-            leerIdentificadorOPalabraClave();
-            return;
-        }
-
-        if (c == '-' && siguiente() == '>') {
-            avanzar();
-            avanzar();
-            tokens.add(new RegistroToken("->", TipoToken.CONECTOR, fila, columna));
-            return;
-        }
-
-        switch (c) {
-            case '=':
-                avanzar();
-                tokens.add(new RegistroToken("=", TipoToken.OP_ASIGNACION, fila, columna));
-                return;
-            case '+':
-                avanzar();
-                tokens.add(new RegistroToken("+", TipoToken.OP_CONCATENACION, fila, columna));
-                return;
-            case '{':
-                avanzar();
-                tokens.add(new RegistroToken("{", TipoToken.LLAVE_ABRE, fila, columna));
-                return;
-            case '}':
-                avanzar();
-                tokens.add(new RegistroToken("}", TipoToken.LLAVE_CIERRA, fila, columna));
-                return;
-            case '(':
-                avanzar();
-                tokens.add(new RegistroToken("(", TipoToken.PARENTESIS_ABRE, fila, columna));
-                return;
-            case ')':
-                avanzar();
-                tokens.add(new RegistroToken(")", TipoToken.PARENTESIS_CIERRA, fila, columna));
-                return;
-            case ',':
-                avanzar();
-                tokens.add(new RegistroToken(",", TipoToken.COMA, fila, columna));
-                return;
-        }
-
-        //si no es ninguno se toma como error
-        int filaError = fila;
-        int columnaError = columna;
-        char caracterMalo = avanzar();
-        errores.add(new RegistroError(String.valueOf(caracterMalo), "Caracter no reconocido", filaError, columnaError));
-    }
-    
-    
-    private void leerComentarioDeLinea() {
-        avanzar();
-        avanzar();
-
-        while (!finDeArchivo() && actual() != '\n') {
-            avanzar();
-        }
-    }
-    
-    
-    private void leerComentarioDeBloque() {
-        int filaInicio = fila;
-        int columnaInicio = columna;
-
-        avanzar();
-        avanzar();
-
-        boolean cerrado = false;
-
-        while (!finDeArchivo()) {
-            if (actual() == '*' && siguiente() == '/') {
-                avanzar();
-                avanzar();
-                cerrado = true;
-                break;
-            }
-            avanzar();
-        }
-
-        if (!cerrado) {
-            errores.add(new RegistroError("/* ...", "Comentario de bloque sin cerrar", filaInicio, columnaInicio));
-        }
-    }
-    
-    
-    private void leerDirectiva() {
-        int filaInicio = fila;
-        int columnaInicio = columna;
-
-        avanzar();
-
-        if (!esLetra(actual())) {
-            errores.add(new RegistroError("@", "Caracter no reconocido (directiva incompleta)", filaInicio, columnaInicio));
-            return;
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append('@');
-
-        while (!finDeArchivo() && esLetra(actual())) {
-            sb.append(avanzar());
-        }
-
-        String lexema = sb.toString();
-        String nombre = lexema.substring(1);
-
-        if (nombre.equals("modelo") || nombre.equals("rol") || nombre.equals("formato")) {
-            tokens.add(new RegistroToken(lexema, TipoToken.DIRECTIVA, filaInicio, columnaInicio));
-        } else {
-            errores.add(new RegistroError(lexema, "Directiva no reconocida", filaInicio, columnaInicio));
-        }
-    }
-    
-    
-    private void leerCadena() {
-        int filaInicio = fila;
-        int columnaInicio = columna;
-
-        avanzar();
-
-        StringBuilder sb = new StringBuilder();
-        sb.append('"');
-
-        boolean cerrada = false;
-
-        while (!finDeArchivo()) {
+    /*
+    **
+    ANALIZADOR LEXICO
+    **
+    */
+    public void AnalizarFlujo() {
+        while(!finDeArchivo()){ //ESTADO INICIAL q0 -  en cada while se inicia un nuevo analisis volviendo al estado inicial
             char c = actual();
 
-            if (c == '"') {
-                sb.append(avanzar());
-                cerrada = true;
-                break;
+        /*
+        **
+        TRANSICIONES - los if son las transiciones(ramas) del AFD hacia los mini-AFD 
+        cada if representa AFD con sus propia gramatica, siendo tambien en este punto el estado inicial
+            
+        transición q0 --categoria(c)--> qX hacia un sub-autómata.
+        **
+        */
+        
+            if (c == ' ' || c == '\t') {
+                avanzar();
+            } else if (c == '\n') {
+                avanzar();
+            } else if (c == '/') {
+                comentario();
+            } else if (c == '@') {
+                directiva();
+            } else if (c == '"') {
+                cadena();
+            } else if (Character.isDigit(c)) {
+                numero();
+            } else if (esInicioIdentificador(c)) {
+                identificadorOPalabraClave();
+            } else if (c == '-') {
+                flechaOError();
+            } else if (c == '=') {
+                emitirSimple(TipoToken.ASIGNACION, "=");
+            } else if (c == '+') {
+                emitirSimple(TipoToken.CONCATENACION, "+");
+            } else if (c == '{') {
+                emitirSimple(TipoToken.LLAVE_ABRE, "{");
+            } else if (c == '}') {
+                emitirSimple(TipoToken.LLAVE_CIERRA, "}");
+            } else if (c == '(') {
+                emitirSimple(TipoToken.PARENTESIS_ABRE, "(");
+            } else if (c == ')') {
+                emitirSimple(TipoToken.PARENTESIS_CIERRA, ")");
+            } else {
+                // Carácter no reconocido por ninguna rama del AFD: recuperación de errores.
+                int filaInicio = fila;
+                int columnaInicio = columna;
+                
+                errores.add(new RegistroError(String.valueOf(c), "CARACTER_NO_RECONOCIDO", filaInicio, columnaInicio));
+                avanzar(); 
             }
-
-            if (c == '\n') {
-                break;
-            }
-
-            sb.append(avanzar());
         }
+    }
+ 
+    
+    /*
+    **
+    mini-AFD 
+    **
+    */
+   
+    // Símbolos de un solo carácter: =, +, {, }, (, )
+     private void emitirSimple(TipoToken tipo, String lexema) {
+        int filaInicio = fila;
+        int columnaInicio = columna;
+        
+        avanzar();
+        tokens.add(new RegistroToken(lexema, tipo, filaInicio, columnaInicio));
+    }   
+        
+    // qCOM: comentarios de línea (//) y de bloque (/* */). No generan token.
+    private void comentario() {
+        int filaInicio = fila;
+        int columnaInicio = columna;
+        
+        avanzar();
 
-        String lexema = sb.toString();
-
-        if (cerrada) {
-            tokens.add(new RegistroToken(lexema, TipoToken.CADENA, filaInicio, columnaInicio));
+        if (!finDeArchivo() && actual() == '/') {
+            while (!finDeArchivo() && actual() != '\n') {
+                avanzar();
+            }
+        } else if (!finDeArchivo() && actual() == '*') {
+            avanzar(); 
+            boolean cerrado = false;
+            while (!finDeArchivo()) {
+                if (actual() == '*' && siguiente() == '/') {
+                    avanzar();
+                    avanzar();
+                    cerrado = true;
+                    break;
+                }
+                if (actual() == '\n') {
+                    avanzar();
+                } else {
+                    avanzar();
+                }
+            }
+            if (!cerrado) {
+                errores.add(new RegistroError("/*", "COMENTARIO_SIN_CERRAR", filaInicio, columnaInicio));
+            }
         } else {
-            errores.add(new RegistroError(lexema, "Cadena sin cerrar", filaInicio, columnaInicio));
+            errores.add(new RegistroError("/", "SIMBOLO_INVALIDO", filaInicio, columnaInicio));
         }
     }
     
-    private void leerNumero() {
+    
+    //directivas @modelo, @rol, @formato
+    //qDIR0 --'@'--> qDIR1 --letra--> qDIR2 --(letra|dígito)*--> ACEPTA
+    private void directiva() {
         int filaInicio = fila;
         int columnaInicio = columna;
+        
+        StringBuilder lexemaCompleto = new StringBuilder();
+        StringBuilder lexema = new StringBuilder();
+        
+        lexemaCompleto.append(actual());
+        avanzar();
 
-        StringBuilder sb = new StringBuilder();
-
-        while (!finDeArchivo() && esDigito(actual())) {
-            sb.append(avanzar());
+        if (finDeArchivo() || !Character.isLetter(actual())) {
+            errores.add(new RegistroError(lexemaCompleto.toString(), "DIRECTIVA_MAL_FORMADA", filaInicio, columnaInicio));
+            return;
         }
-
-        boolean esDecimal = false;
-
-        if (!finDeArchivo() && actual() == '.' && esDigito(siguiente())) {
-            esDecimal = true;
-            sb.append(avanzar()); // consume el '.'
-
-            while (!finDeArchivo() && esDigito(actual())) {
-                sb.append(avanzar());
-            }
+        
+        while (!finDeArchivo() && (Character.isLetterOrDigit(actual()))) {
+            lexema.append(actual());
+            avanzar();
         }
-
-        String lexema = sb.toString();
-
-        if (esDecimal) {
-            tokens.add(new RegistroToken(lexema, TipoToken.DECIMAL, filaInicio, columnaInicio));
+        
+        if (DIRECTIVAS_VALIDAS.contains(lexema.toString() + ",")) {
+            lexemaCompleto.append(lexema);
+            tokens.add(new RegistroToken(lexemaCompleto.toString(),TipoToken.DIRECTIVA, filaInicio, columnaInicio));
         } else {
-            tokens.add(new RegistroToken(lexema, TipoToken.ENTERO, filaInicio, columnaInicio));
+            errores.add(new RegistroError(lexema.toString(), "DIRECTIVA_DESCONOCIDA", filaInicio, columnaInicio));
         }
     }
     
-    private void leerIdentificadorOPalabraClave() {
+    
+    
+    //qSTR0 --'"'--> qSTR1 (bucle: cualquier char != '"' y != '\n') --'"'--> ACEPTA
+    private void cadena() {
+        int filaInicio = fila;
+        int columnaInicio = columna;
+        
+        StringBuilder lexema = new StringBuilder();
+        lexema.append(actual());
+        avanzar();
+
+        //qSTR0 --'"'--> qSTR1 (bucle: cualquier char != '"' y != '\n')
+        while (!finDeArchivo()) {
+            
+            if (actual() != '"' && actual() != '\n') {
+                lexema.append(actual());
+                avanzar();
+            }
+        }
+
+        if (finDeArchivo() || actual() == '\n') {
+            errores.add(new RegistroError(lexema.toString(), "CADENA_SIN_CERRAR", filaInicio, columnaInicio));
+            return; 
+        }
+        
+        //qSTR1 (bucle: cualquier char != '"' y != '\n') --'"'--> ACEPTA
+        lexema.append(actual());
+        avanzar();
+        tokens.add(new RegistroToken(lexema.toString(), TipoToken.CADENA, filaInicio, columnaInicio));
+    }
+    
+    
+    
+    //enteros y decimales
+    //qNUM0 --dígito--> qNUM1 (bucle dígito) --ACEPTA ENTERO
+    //qNUM0 --dígito--> qNUM1 (bucle dígito) --'.'--> qDEC0 --dígito--> qDEC1 (bucle dígito) --ACEPTA DECIMAL
+    private void numero() {
+        int filaInicio = fila;
+        int columnaInicio = columna;
+        
+        StringBuilder lexema = new StringBuilder();
+
+        while (!finDeArchivo() && Character.isDigit(actual())) {
+            lexema.append(actual());
+            avanzar();
+        }
+
+        //transición qNUM1 --'.'--> qDEC0
+        if (!finDeArchivo() && actual() == '.' && siguiente() != '\0' && Character.isDigit(siguiente())) {
+            lexema.append('.');
+            avanzar();
+
+            //qDEC0 --dígito--> qDEC1 (bucle dígito)
+            while (!finDeArchivo() && Character.isDigit(actual())) {
+                lexema.append(actual());
+                avanzar();
+            }
+            tokens.add(new RegistroToken(lexema.toString(), TipoToken.DECIMAL, filaInicio, columnaInicio));
+            
+        //ACEPTA ENTERO
+        } else {
+            tokens.add(new RegistroToken(lexema.toString(), TipoToken.ENTERO, filaInicio, columnaInicio));
+        }
+    }
+    
+    
+    //qARR: flecha ->
+    //qARR0 --'-'--> qARR1 --'>'--> ACEPTA FLECHA
+    private void flechaOError() {
+        int filaInicio = fila;
+        int columnaInicio = columna;
+        
+        avanzar();
+        if (!finDeArchivo() && actual() == '>') {
+            avanzar();
+            tokens.add(new RegistroToken("->", TipoToken.CONECTOR, filaInicio, columnaInicio));
+        } else {
+            errores.add(new RegistroError("-", "SIMBOLO_INVALIDO", filaInicio, columnaInicio));
+        }
+    }
+    
+    
+    //qID: identificadores y palabras reservadas
+    //  qID0 --(letra|'_')--> qID1 --(letra|dígito|'_')*--> ACEPTA
+    private void identificadorOPalabraClave() {
         int filaInicio = fila;
         int columnaInicio = columna;
 
-        StringBuilder sb = new StringBuilder();
+        StringBuilder lexema = new StringBuilder();
 
+        // qID0 -> qID1
+        lexema.append(actual());
+        avanzar();
+
+        // qID1: bucle (quedarse en el mismo estado mientras siga siendo válido)
         while (!finDeArchivo() && esParteIdentificador(actual())) {
-            sb.append(avanzar());
+            lexema.append(actual());
+            avanzar();
         }
 
-        String lexema = sb.toString();
-
-        if (lexema.equals("AGENTE") || lexema.equals("contexto") || lexema.equals("variable")
-                || lexema.equals("EJECUTAR") || lexema.equals("EXPORTAR")) {
-            tokens.add(new RegistroToken(lexema, TipoToken.PALABRA_RESERVADA, filaInicio, columnaInicio));
-            return;
+        String palabra = lexema.toString();
+        TipoToken tipo = TODAS_LAS_PALABRAS.get(palabra);
+        if (tipo == null) {
+            tipo = TipoToken.IDENTIFICADOR;
         }
-
-        if (lexema.equals("PREGUNTAR") || lexema.equals("GENERAR") || lexema.equals("RESUMIR")
-                || lexema.equals("ANALIZAR") || lexema.equals("TRADUCIR") || lexema.equals("CLASIFICAR")
-                || lexema.equals("EXTRAER")) {
-            tokens.add(new RegistroToken(lexema, TipoToken.COMANDO_IA, filaInicio, columnaInicio));
-            return;
-        }
-
-        if (lexema.equals("SOBRE") || lexema.equals("DESDE") || lexema.equals("EN") || lexema.equals("COMO")) {
-            tokens.add(new RegistroToken(lexema, TipoToken.CONECTOR, filaInicio, columnaInicio));
-            return;
-        }
-
-        if (lexema.equals("CARGAR")) {
-            tokens.add(new RegistroToken(lexema, TipoToken.FUNCION, filaInicio, columnaInicio));
-            return;
-        }
-
-        tokens.add(new RegistroToken(lexema, TipoToken.IDENTIFICADOR, filaInicio, columnaInicio));
-    }
-    
-    
+        tokens.add(new RegistroToken(palabra, tipo, filaInicio, columnaInicio));
+    }  
 }
