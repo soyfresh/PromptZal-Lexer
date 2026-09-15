@@ -110,15 +110,6 @@ public class Lexer {
         return (posicion + 1 < flujoCaracteres.length()) ? flujoCaracteres.charAt(posicion + 1) : '\0';
     }
 
-    private boolean esInicioIdentificador(char c) {
-        return Character.isLetter(c) || c == '_';
-    }
-
-    private boolean esParteIdentificador(char c) {
-        return Character.isLetterOrDigit(c) || c == '_';
-    }
-    
-    
     /*
     **
     ANALIZADOR LEXICO
@@ -150,7 +141,7 @@ public class Lexer {
             } else if (Character.isDigit(c)) {
                 numero();
             } else if (esInicioIdentificador(c)) {
-                identificadorOPalabraClave();
+                identificadorOPalabraReservada();
             } else if (c == '-') {
                 flechaOError();
             } else if (c == '=') {
@@ -270,12 +261,9 @@ public class Lexer {
         avanzar();
 
         //qSTR0 --'"'--> qSTR1 (bucle: cualquier char != '"' y != '\n')
-        while (!finDeArchivo()) {
-            
-            if (actual() != '"' && actual() != '\n') {
+        while (!finDeArchivo() && actual() != '"' && actual() != '\n') {
                 lexema.append(actual());
                 avanzar();
-            }
         }
 
         if (finDeArchivo() || actual() == '\n') {
@@ -342,7 +330,7 @@ public class Lexer {
     
     //qID: identificadores y palabras reservadas
     //  qID0 --(letra|'_')--> qID1 --(letra|dígito|'_')*--> ACEPTA
-    private void identificadorOPalabraClave() {
+    private void identificadorOPalabraReservada() {
         int filaInicio = fila;
         int columnaInicio = columna;
 
@@ -365,4 +353,15 @@ public class Lexer {
         }
         tokens.add(new RegistroToken(palabra, tipo, filaInicio, columnaInicio));
     }  
+    
+    
+    private boolean esInicioIdentificador(char c) {
+        return Character.isLetter(c) || c == '_';
+    }
+
+    private boolean esParteIdentificador(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
+    }
+    
+    
 }

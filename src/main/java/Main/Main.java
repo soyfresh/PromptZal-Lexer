@@ -21,13 +21,11 @@ import java.util.Scanner;
  * @author dar333n
  */
 public class Main {
-    
+    /*
     public static Scanner sc = new Scanner(System.in, StandardCharsets.UTF_8);
     public static List<RegistroToken> tokens;
     public static List<RegistroError> errores;
     
-
-    public static void main(String[] args) {
 
         System.out.println("=====================================");
         System.out.println("  PromptZal - Analizador Lexico");
@@ -252,7 +250,7 @@ public class Main {
 
         System.out.println("Total de errores: " + errores.size());
     }
-    
+ */   
 }
     
 
